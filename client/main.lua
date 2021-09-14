@@ -32,11 +32,6 @@ Citizen.CreateThread(function()
             ActiveService(Config.Routes.Route436)
         end
     end)
-
-    while currentVehicle == nil do
-        Wait(1000)
-    end
-
 end)
 
 RegisterNetEvent('esx:playerLoaded')
@@ -93,7 +88,7 @@ function ActiveService(route)
             Wait(50)
         end
         print("Ped done")
-        local ped = CreatePed(0, hash, startPos.x+math.random(-4.0, 4.0), startPos.y+math.random(-4.0, 4.0), startPos.z, math.random(0, 360), true, true)
+        local ped = CreatePed(0, hash, startPos.x, startPos.y, startPos.z, 0.0, true, true)
         SetPedIntoVehicle(ped, vehicle, -1)
         SetPedRelationshipGroupHash(ped, "PLAYER")
         SetPedHearingRange(ped, 0.0)
