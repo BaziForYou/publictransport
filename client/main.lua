@@ -18,7 +18,7 @@ Citizen.CreateThread(function()
             SetBlipAsShortRange(blip, true)
         
             BeginTextCommandSetBlipName('STRING')
-            AddTextComponentSubstringPlayerName("Fermata Bus - " .. i)
+            AddTextComponentSubstringPlayerName("Bus stop")
             EndTextCommandSetBlipName(blip)
         end
     end
@@ -44,7 +44,7 @@ AddEventHandler('esx:playerLoaded', function(playerData)
     print("Player loaded")
     ESX.TriggerServerCallback("esx_publictransports:getVehicle", function(vehicle)
         if vehicle == nil then return end
-        print("Vechile : " .. vehicle .. " ")
+        print("vehicle : " .. vehicle .. " ")
         print(DoesEntityExist(NetworkGetEntityFromNetworkId(vehicle)))
         local busBlip = AddBlipForEntity(NetworkGetEntityFromNetworkId(vehicle))
         SetBlipSprite (1, 463)
@@ -52,7 +52,7 @@ AddEventHandler('esx:playerLoaded', function(playerData)
         SetBlipScale(busBlip, 0.5)
         SetBlipAsShortRange(busBlip, true)
         BeginTextCommandSetBlipName('STRING')
-        AddTextComponentSubstringPlayerName('BUS')
+        AddTextComponentSubstringPlayerName('Bus')
         EndTextCommandSetBlipName(busBlip)
     end)
 end)
@@ -127,10 +127,4 @@ function ActiveService(route)
             end
         end
     end)
-
-    -- Wait(15000)
-    -- if currentVehicle == nil then
-    --     print("RESTARTING!!!")
-    --     ActiveService(route)
-    -- end
 end

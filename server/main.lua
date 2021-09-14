@@ -17,7 +17,6 @@ RegisterCommand("test", function(source, args)
     local ped = CreatePed(0, GetHashKey("ig_bankman"), GetEntityCoords(GetPlayerPed(source)), 0.0, true, true, true)
     local vehicle = CreateVehicle(GetHashKey("Bus"), vector3(252.9626, -1223.683, 28.82495), 272.1259765625, true, true)
     SetPedIntoVehicle(ped, vehicle, -1)
-    --TaskDriveBy(ped, ped, vehicle, vector3(240.9363, -831.5077, 29.27991), 1.0, 1.0, false)
     -- while true do
     --     Wait(1000)
     --     print(DoesEntityExist(ped))
