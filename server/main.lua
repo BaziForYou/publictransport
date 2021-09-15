@@ -44,12 +44,10 @@ AddEventHandler("onServerResourceStart", function(resName)
 		return
 	end
 	-- Find a client to run the code
-	local client = findClient()
+	local client = findClient()	
 	local vehicle = CreateVehicle(GetHashKey(Config.BusHash), Config.Routes[1].start.pos, Config.Routes[1].start.heading, true, true)
 	local ped = CreatePedInsideVehicle(vehicle, 0, GetHashKey("ig_bankman"), -1, true, true)
-
 	while not DoesEntityExist(ped) or not DoesEntityExist(vehicle) do
-
 		if not DoesEntityExist(ped) then
 			ped = CreatePedInsideVehicle(vehicle, 0, GetHashKey("ig_bankman"), -1, true, true)
 		end
@@ -62,11 +60,24 @@ AddEventHandler("onServerResourceStart", function(resName)
 	state.busId = NetworkGetNetworkIdFromEntity(vehicle)
 	state.seats = nil
 	state.firstTime = true
-
+	-- Solve the problem of out of scope management of entities
+	SetEntityDistanceCullingRadius(vehicle, 999999999.0)
+	SetEntityDistanceCullingRadius(ped, 999999999.0) -- onesync_distanceCullVehicles true
 	-- DOESNT ALWAYS WORKS NEED TO FIX IT!! (Fix with WAIT. The problem is maybe this event starts too early for triggering a client event?)
 	Wait(1000)
 	TriggerClientEvent("esx_publictransports:setUpClient", client, state)
 	-- Trigger event to everyone for the blips
+	TriggerClientEvent("esx_publictransports:createBusBlip", -1, state.busId)
+	
+
+	while true do
+		Wait(5000)
+		print(DoesEntityExist(ped))
+		print(DoesEntityExist(vehicle))
+		print(GetEntityCoords(vehicle))
+		print("owner " .. NetworkGetEntityOwner(vehicle))
+		print("---")
+	end
 end)
 
 ESX.RegisterServerCallback("esx_publictransports:getBusEntity", function(playerId, cb)

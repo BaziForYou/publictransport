@@ -29,7 +29,8 @@ TODO:
 	DONE
  - Missing all the part about blips for each client that means share the bus entity with serevr to send to everyone the right entity for creating the rght blip
  - Only spawn the bu if player near or in some rare random cases
-- Blips if client connect (WHY??? this resource starts and esx_publictransports:getBusEntity doesnt work?)
+ - Blips if client connect (WHY??? this resource starts and esx_publictransports:getBusEntity doesnt work?)
+ - Entity owner set to -1 when client disconnect. Is this a problem??
 ]]
 
 
@@ -52,15 +53,20 @@ end)
 RegisterNetEvent('esx:playerLoaded')
 AddEventHandler('esx:playerLoaded', function(playerData)
 	ESX.TriggerServerCallback("esx_publictransports:getBusEntity", function(vehicle)
-		local busBlip = AddBlipForEntity(NetworkGetEntityFromNetworkId(vehicle))
-		SetBlipSprite (1, 463)
-		SetBlipColour (busBlip, 38)
-		SetBlipScale(busBlip, 0.5)
-		SetBlipAsShortRange(busBlip, true)
-		BeginTextCommandSetBlipName('STRING')
-		AddTextComponentSubstringPlayerName('Bus')
-		EndTextCommandSetBlipName(busBlip)
+		TriggerEvent("esx_publictransports:createBusBlip", vehicle)
 	end)
+end)
+
+RegisterNetEvent("esx_publictransports:createBusBlip")
+AddEventHandler("esx_publictransports:createBusBlip", function(vehicle)
+	local busBlip = AddBlipForEntity(NetworkGetEntityFromNetworkId(vehicle))
+	SetBlipSprite (1, 463)
+	SetBlipColour (busBlip, 38)
+	SetBlipScale(busBlip, 0.5)
+	SetBlipAsShortRange(busBlip, false)
+	BeginTextCommandSetBlipName('STRING')
+	AddTextComponentSubstringPlayerName('Bus')
+	EndTextCommandSetBlipName(busBlip)
 end)
 
 --Manage player disconnection
@@ -220,8 +226,7 @@ function ManageService(route, state)
 			Wait(4000)
 		end
 	end)
-	print("Is first time? ")
-	print(state.firstTime)
+
 	if state.firstTime then
 		SetPedRelationshipGroupHash(ped, "PLAYER")
 		SetPedHearingRange(ped, 0.0)
@@ -234,34 +239,24 @@ function ManageService(route, state)
 		SetEntityAsMissionEntity(ped, true,true)
 		SetDriverAbility(ped, 1.0)
 
-
 		state.firstTime = false
-
-		-- START ROUTE
-		while true do
-			Wait(0)
-			if not isDriving then
-				TaskVehicleDriveToCoordLongrange(ped, vehicle, route[nextStop], 15.0, 319, 1.0) -- 443 -> respect traffic lights;
-				isDriving = true
-			end
-
-			if Vdist(GetEntityCoords(vehicle), route[nextStop]) <= 8.0 then
-				isDriving = false
-				Wait(8000)
-				if nextStop == #route then nextStop = 1 else nextStop = nextStop + 1 end
-			else
-				Wait(500)
-			end
+	end
+	-- START ROUTE
+	while true do
+		Wait(0)
+		if not isDriving then
+			TaskVehicleDriveToCoordLongrange(ped, vehicle, route[nextStop], 15.0, 319, 1.0) -- 443 -> respect traffic lights;
+			isDriving = true
 		end
 
-		
+		if Vdist(GetEntityCoords(vehicle), route[nextStop]) <= 8.0 then
+			isDriving = false
+			Wait(8000)
+			if nextStop == #route then nextStop = 1 else nextStop = nextStop + 1 end
+		else
+			Wait(500)
+		end
 	end
-
-
-
-
-
-
 end
 
 
