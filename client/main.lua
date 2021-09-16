@@ -8,13 +8,13 @@ Citizen.CreateThread(function()
 		Citizen.Wait(10)
 	end
 
-	for _, route in pairs(Config.Routes) do
+	for _, route in ipairs(Config.Routes) do
 		for i, pos in ipairs(route) do
 			local blip = AddBlipForCoord(pos)
 
-			SetBlipSprite (blip, 1)
-			SetBlipColour (blip, 44)
-			SetBlipScale(blip, 0.4)
+			SetBlipSprite (blip, 513)
+			SetBlipColour (blip, route.info.color)
+			SetBlipScale(blip, 0.5)
 			SetBlipAsShortRange(blip, true)
 		
 			BeginTextCommandSetBlipName('STRING')
@@ -47,7 +47,7 @@ end)
 RegisterNetEvent("esx_publictransports:setUpClient")
 AddEventHandler("esx_publictransports:setUpClient", function(state)
 	print("Client recived orders")
-	ManageService(Config.Routes[1], state)
+	ManageService(Config.Routes, state)
 end)
 
 RegisterNetEvent('esx:playerLoaded')
@@ -59,11 +59,12 @@ end)
 
 RegisterNetEvent("esx_publictransports:createBusBlip")
 AddEventHandler("esx_publictransports:createBusBlip", function(vehicle)
+	print(GetEntityCoords(NetworkGetEntityFromNetworkId(vehicle)))
 	local busBlip = AddBlipForEntity(NetworkGetEntityFromNetworkId(vehicle))
 	SetBlipSprite (1, 463)
 	SetBlipColour (busBlip, 38)
 	SetBlipScale(busBlip, 0.5)
-	SetBlipAsShortRange(busBlip, false)
+	SetBlipAsShortRange(busBlip, true)
 	BeginTextCommandSetBlipName('STRING')
 	AddTextComponentSubstringPlayerName('Bus')
 	EndTextCommandSetBlipName(busBlip)
@@ -74,188 +75,74 @@ AddEventHandler('playerDropped', function (reason)
 	TriggerServerEvent("esx_publictransports:clientQuit", clientState)
 end)
 
-function ActiveService(route)
-	local startPos = route.start.pos
-	local heading = route.start.heading
-
-	ESX.Game.SpawnVehicle(Config.BusHash, startPos, heading, function(vehicle)
-		-- Vehicle
-		while vehicle == nil do
-			Wait(1)
+function ManageService(route, state)
+	clientState = state
+	for i, routeState in ipairs(state) do
+		local vehicle = NetworkGetEntityFromNetworkId(routeState.busId)
+		local ped = NetworkGetEntityFromNetworkId(routeState.pedId)
+		--Maybe its useless need to test online
+		if routeState.seats ~= nil then
+			-- restore player seats
+			print("Need to restore players seats")
 		end
-		table.insert(vehicleList, vehicle)
-		local busBlip = AddBlipForEntity(vehicle)
-		SetBlipSprite (1, 463)
-		SetBlipColour (busBlip, 38)
-		SetBlipScale(busBlip, 0.5)
-		SetBlipAsShortRange(busBlip, true)
-		BeginTextCommandSetBlipName('STRING')
-		AddTextComponentSubstringPlayerName('BUS')
-		EndTextCommandSetBlipName(busBlip)
 
-		SetEntityAsMissionEntity(vehicle, true,true)
-		SetVehicleHasBeenOwnedByPlayer(vehicle, true)
-
-		-- Ped
-		local hash = GetHashKey("ig_bankman")
-		while not HasModelLoaded(hash) do
-			RequestModel(hash)
-			Wait(50)
-		end
-		local ped = CreatePed(0, hash, startPos.x, startPos.y, startPos.z, 0.0, true, true)
-		SetPedIntoVehicle(ped, vehicle, -1)
-		SetPedRelationshipGroupHash(ped, "PLAYER")
-		SetPedHearingRange(ped, 0.0)
-		SetPedSeeingRange(ped, 0.0)
-		SetPedAlertness(ped, 0.0)
-		SetPedFleeAttributes(ped, 0, 0)
-		SetBlockingOfNonTemporaryEvents(ped, true)
-		SetEntityCanBeDamaged(ped, false)
-		SetPedCanBeTargetted(ped, false)
-		SetEntityAsMissionEntity(ped, true,true)
-		SetDriverAbility(ped, 0.5)
+		local isDriving = false
 
 		--TO REMOVE
 		--SetPedIntoVehicle(GetPlayerPed(-1), vehicle, -2)
 
-		state.busId = NetworkGetNetworkIdFromEntity(vehicle)
-		state.pedId = NetworkGetNetworkIdFromEntity(ped)
-		state.seats = {}
-
-		--Fast stuff IS THIS NEEDED????
-		Citizen.CreateThread(function()
-			while true do 
-				state.coords = GetEntityCoords(vehicle)
-				state.heading = GetEntityHeading(vehicle)
-				Wait(500)
-			end
-		end)
-		--Slow stuff
+		--MAYBE USELESS
+		--[[
 		Citizen.CreateThread(function()
 			while true do 
 				if GetVehicleNumberOfPassengers(vehicle) ~= 0 then
-					state.seats = {}
+					routeState.seats = {}
 					for i=0, GetVehicleModelNumberOfSeats(Config.BusHash), 1 do
 						if IsPedAPlayer(GetPedInVehicleSeat(vehicle, i)) then
-							table.insert(state.seats, {seatId = i, playerId = NetworkGetNetworkIdFromEntity(GetPedInVehicleSeat(vehicle, i))})
+							table.insert(routeState.seats, {seatId = i, playerId = NetworkGetNetworkIdFromEntity(GetPedInVehicleSeat(vehicle, i))})
 						end
 					end
 				end
-				state.nextStop = i
 				Wait(4000)
 			end
 		end)
+		]]
 
+		if routeState.firstTime then
+			SetPedRelationshipGroupHash(ped, "PLAYER")
+			SetPedHearingRange(ped, 0.0)
+			SetPedSeeingRange(ped, 0.0)
+			SetPedAlertness(ped, 0.0)
+			SetPedFleeAttributes(ped, 0, 0)
+			SetBlockingOfNonTemporaryEvents(ped, true)
+			SetEntityCanBeDamaged(ped, false)
+			SetPedCanBeTargetted(ped, false)
+			SetEntityAsMissionEntity(ped, true,true)
+			SetDriverAbility(ped, 1.0)
+
+			SetNetworkIdAlwaysExistsForPlayer(routeState.busId, PlayerId(), true)
+
+			routeState.firstTime = false
+		end
 		-- START ROUTE
-		local i = 2
-		local isDriving = false
-		while true do
-			Wait(0)
+		Citizen.CreateThread(function()
+			while true do
+				Wait(0)
+				if not isDriving then
+					TaskVehicleDriveToCoordLongrange(ped, vehicle, route[i][routeState.nextStop], 15.0, 524603, 3.0) -- 443 -> respect traffic lights; 319\
+					isDriving = true
+				end
 
-			if not isDriving then
-				TaskVehicleDriveToCoordLongrange(ped, vehicle, route[i], 15.0, 319, 1.0) -- 443 -> respect traffic lights;
-				isDriving = true
-			end
-
-			
-			if Vdist(GetEntityCoords(vehicle), route[i]) <= 8.0 then
-				isDriving = false
-				Wait(8000)
-				if i == #route then i = 1 else i = i + 1 end
-			else
-				Wait(250)
-			end
-		end
-	end)
-end
-
-function RestoreService(route, state)
-	local vehicle = NetworkGetEntityFromNetworkId(state.busId)
-	local ped = NetworkGetEntityFromNetworkId(state.pedId)
-	SetPedIntoVehicle(ped, vehicle, -1)
-	-- DOES THEY KEEP ALL THE PROPERTIES SETTED FROM OTHER CLIENTS?? NEED TO TEST WITH 2 CLIENTS
-
-	-- Restore players in bus state.seats[1].playerId
-	local i = 2
-	local isDriving = false
-	while true do
-		Wait(0)
-
-		if not isDriving then
-			TaskVehicleDriveToCoordLongrange(ped, vehicle, route[i], 15.0, 319, 1.0) -- 443 -> respect traffic lights;
-			isDriving = true
-		end
-
-		
-		if Vdist(GetEntityCoords(vehicle), route[i]) <= 8.0 then
-			isDriving = false
-			Wait(8000)
-			if i == #route then i = 1 else i = i + 1 end
-		else
-			Wait(250)
-		end
-	end
-end
-
-function ManageService(route, state)
-	local vehicle = NetworkGetEntityFromNetworkId(state.busId)
-	local ped = NetworkGetEntityFromNetworkId(state.pedId)
-	clientState = state
-	if state.seats ~= nil then
-		-- restore player seats
-		print("Need to restore players seats")
-	end
-
-	local nextStop = 2
-	local isDriving = false
-
-	--TO REMOVE
-	--SetPedIntoVehicle(GetPlayerPed(-1), vehicle, -2)
-
-	Citizen.CreateThread(function()
-		while true do 
-			if GetVehicleNumberOfPassengers(vehicle) ~= 0 then
-				state.seats = {}
-				for i=0, GetVehicleModelNumberOfSeats(Config.BusHash), 1 do
-					if IsPedAPlayer(GetPedInVehicleSeat(vehicle, i)) then
-						table.insert(state.seats, {seatId = i, playerId = NetworkGetNetworkIdFromEntity(GetPedInVehicleSeat(vehicle, i))})
-					end
+				if Vdist(GetEntityCoords(vehicle), route[i][routeState.nextStop]) <= 8.0 then
+					Wait(8000)
+					isDriving = false
+					if routeState.nextStop == #route[i] then routeState.nextStop = 1 else routeState.nextStop = routeState.nextStop + 1 end
+				else
+					Wait(500)
 				end
 			end
-			state.nextStop = nextStop
-			Wait(4000)
-		end
-	end)
+		end)
 
-	if state.firstTime then
-		SetPedRelationshipGroupHash(ped, "PLAYER")
-		SetPedHearingRange(ped, 0.0)
-		SetPedSeeingRange(ped, 0.0)
-		SetPedAlertness(ped, 0.0)
-		SetPedFleeAttributes(ped, 0, 0)
-		SetBlockingOfNonTemporaryEvents(ped, true)
-		SetEntityCanBeDamaged(ped, false)
-		SetPedCanBeTargetted(ped, false)
-		SetEntityAsMissionEntity(ped, true,true)
-		SetDriverAbility(ped, 1.0)
-
-		state.firstTime = false
-	end
-	-- START ROUTE
-	while true do
-		Wait(0)
-		if not isDriving then
-			TaskVehicleDriveToCoordLongrange(ped, vehicle, route[nextStop], 15.0, 319, 1.0) -- 443 -> respect traffic lights;
-			isDriving = true
-		end
-
-		if Vdist(GetEntityCoords(vehicle), route[nextStop]) <= 8.0 then
-			isDriving = false
-			Wait(8000)
-			if nextStop == #route then nextStop = 1 else nextStop = nextStop + 1 end
-		else
-			Wait(500)
-		end
 	end
 end
 

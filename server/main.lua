@@ -6,6 +6,14 @@ state = {}
 
 TriggerEvent('esx:getSharedObject', function(obj) ESX = obj end)
 
+RegisterCommand("pos", function(source, args)
+    print(GetEntityCoords(GetPlayerPed(source)))
+end)
+
+RegisterCommand("posbegin", function(source, args)
+    print("pos = " .. GetEntityCoords(GetPlayerPed(source)) .. ", heading = " .. GetEntityHeading(GetPlayerPed(source)))
+end)
+
 ESX.RegisterServerCallback("esx_publictransports:serviceStatus", function(playerId, cb)
 	cb(isServiceActive)
 end)
@@ -43,33 +51,60 @@ AddEventHandler("onServerResourceStart", function(resName)
 	if resName ~= GetCurrentResourceName() then
 		return
 	end
+
 	-- Find a client to run the code
 	local client = findClient()	
-	local vehicle = CreateVehicle(GetHashKey(Config.BusHash), Config.Routes[1].start.pos, Config.Routes[1].start.heading, true, true)
-	local ped = CreatePedInsideVehicle(vehicle, 0, GetHashKey("ig_bankman"), -1, true, true)
-	while not DoesEntityExist(ped) or not DoesEntityExist(vehicle) do
-		if not DoesEntityExist(ped) then
+
+	for i, route in ipairs(Config.Routes) do
+		local position = route.info.pos
+		local heading = route.info.heading
+		local blipColor = route.info.color
+		local hash = route.info.hash
+
+		state[i] = {}
+
+		local vehicle = CreateVehicle(GetHashKey(hash), position, heading, true, true)
+		local ped = CreatePedInsideVehicle(vehicle, 0, GetHashKey("ig_bankman"), -1, true, true)
+		Wait(1000)
+		-- while DoesEntityExist(ped) == false or DoesEntityExist(vehicle) == false do
+		-- 	print(vehicle .. " - " .. ped)
+		-- 	-- SOME PROBLEMS HERE IF PLAYER OUT OF SCOPE WHEN GET IN SCOPE SPAWNS A LOT OF BUS AND PEDS
+		-- 	if not DoesEntityExist(ped) then
+		-- 		ped = CreatePedInsideVehicle(vehicle, 0, GetHashKey("ig_bankman"), -1, true, true)
+		-- 	end
+		-- 	if not DoesEntityExist(vehicle) then
+		-- 		vehicle = CreateVehicle(GetHashKey(hash), position, heading, true, true)
+		-- 	end
+		-- 	Wait(1000)
+		-- end
+		while DoesEntityExist(vehicle) == false do 
+			vehicle = CreateVehicle(GetHashKey(hash), position, heading, true, true)
+			Wait(500)
+		end
+		while DoesEntityExist(ped) == false do 
 			ped = CreatePedInsideVehicle(vehicle, 0, GetHashKey("ig_bankman"), -1, true, true)
+			Wait(500)
 		end
-		if not DoesEntityExist(vehicle) then
-			vehicle = CreateVehicle(GetHashKey(Config.BusHash), Config.Routes[1].start.pos, Config.Routes[1].start.heading, true, true)
-		end
-		Wait(500)
+		state[i].pedId = NetworkGetNetworkIdFromEntity(ped)
+		state[i].busId = NetworkGetNetworkIdFromEntity(vehicle)
+		state[i].seats = nil
+		state[i].firstTime = true
+		state[i].nextStop = 2	
+		-- Solve the problem of out of scope management of entities
+		SetEntityDistanceCullingRadius(vehicle, 999999999.0)
+		SetEntityDistanceCullingRadius(ped, 999999999.0) -- onesync_distanceCullVehicles true
+		-- Trigger event to everyone for the blips
+		TriggerClientEvent("esx_publictransports:createBusBlip", -1, state[i].busId)
+		print(GetEntityCoords(NetworkGetEntityFromNetworkId(state[i].busId)))
 	end
-	state.pedId = NetworkGetNetworkIdFromEntity(ped)
-	state.busId = NetworkGetNetworkIdFromEntity(vehicle)
-	state.seats = nil
-	state.firstTime = true
-	-- Solve the problem of out of scope management of entities
-	SetEntityDistanceCullingRadius(vehicle, 999999999.0)
-	SetEntityDistanceCullingRadius(ped, 999999999.0) -- onesync_distanceCullVehicles true
+	print("Server ready")
 	-- DOESNT ALWAYS WORKS NEED TO FIX IT!! (Fix with WAIT. The problem is maybe this event starts too early for triggering a client event?)
 	Wait(1000)
 	TriggerClientEvent("esx_publictransports:setUpClient", client, state)
-	-- Trigger event to everyone for the blips
-	TriggerClientEvent("esx_publictransports:createBusBlip", -1, state.busId)
 	
-
+	
+	
+--[[
 	while true do
 		Wait(5000)
 		print(DoesEntityExist(ped))
@@ -78,6 +113,7 @@ AddEventHandler("onServerResourceStart", function(resName)
 		print("owner " .. NetworkGetEntityOwner(vehicle))
 		print("---")
 	end
+	]]
 end)
 
 ESX.RegisterServerCallback("esx_publictransports:getBusEntity", function(playerId, cb)
@@ -91,8 +127,10 @@ AddEventHandler('onResourceStop', function(resource)
 	if resource ~= GetCurrentResourceName() then
 		return
 	end
-	DeleteEntity(NetworkGetEntityFromNetworkId(state.pedId))
-	DeleteEntity(NetworkGetEntityFromNetworkId(state.busId))
+	for _, routeState in ipairs(state) do
+		DeleteEntity(NetworkGetEntityFromNetworkId(routeState.pedId))
+		DeleteEntity(NetworkGetEntityFromNetworkId(routeState.busId))
+	end
 end)
 
 function findClient()
