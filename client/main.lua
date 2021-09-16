@@ -1,7 +1,7 @@
 ESX = nil
 vehicleList = {}
 clientState = {}
- 
+ --PROVA
 Citizen.CreateThread(function()
 	while ESX == nil do
 		TriggerEvent('esx:getSharedObject', function(obj) ESX = obj end)
@@ -24,7 +24,7 @@ Citizen.CreateThread(function()
 	end
 end)
 
---[[
+--[[ 
 TODO:
 	DONE
  - Missing all the part about blips for each client that means share the bus entity with serevr to send to everyone the right entity for creating the rght blip
