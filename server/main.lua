@@ -1,8 +1,8 @@
 ESX = nil
 
-isServiceActive = false
 vehicleList = {}
 state = {}
+currentClient = nil
 
 TriggerEvent('esx:getSharedObject', function(obj) ESX = obj end)
 
@@ -14,37 +14,34 @@ RegisterCommand("posbegin", function(source, args)
     print("pos = " .. GetEntityCoords(GetPlayerPed(source)) .. ", heading = " .. GetEntityHeading(GetPlayerPed(source)))
 end)
 
-ESX.RegisterServerCallback("esx_publictransports:serviceStatus", function(playerId, cb)
-	cb(isServiceActive)
-end)
-
 RegisterCommand("test",function(source, args)
-	print("Ped task " .. GetPedSpecificTaskType(NetworkGetEntityFromNetworkId(state.pedId), 0))
+
 end)
 
-RegisterServerEvent("esx_publictransports:clientQuit")
-AddEventHandler("esx_publictransports:clientQuit", function(state)
-
-	--[[
-	PROBLEM :
-		NEED TO CREATE PED AND VEHICLE SERVER SIDE, THEN SEND THEM TO A CLIENT AND MAKE THEM DO STUFF UNITL THEY DISCONNECT THEN SEARCH ANOTHER CLIENT AND REPEAT
-
-		LOOK esx_publictransport/server/main.lua - line: 16
-	-------
-
-	while true do
-		print("Bus exists?")
-		print(DoesEntityExist(NetworkGetEntityFromNetworkId(state.busId)))
-
-		print("Ped exists?")
-		print(DoesEntityExist(NetworkGetEntityFromNetworkId(state.pedId)))
-		Wait(5000)
-		print("\n")
+--[[
+AddEventHandler("playerConnecting", function()
+	Wait(0)
+	for _, data in ipairs(state) do
+		TriggerClientEvent("esx_publictransports:createBusBlip", -1, data.busId, 4)
 	end
-	]]
-	print("CLIENT DISCONNECTED") -- NON STAMPA
-	local client = findClient()
-	TriggerClientEvent("esx_publictransports:setUpClient", client, state)
+end)
+]]
+ESX.RegisterServerCallback("esx_publictransports:playerConnecting", function(playerId, cb)
+	if currentClient ~= nil then
+		local busIds = {}
+		for _, data in ipairs(state) do
+			table.insert(busIds, data.busId)
+		end
+		cb(busIds)
+	end
+end)
+
+AddEventHandler('playerDropped', function (reason)
+	if source == currentClient then
+		print("CLIENT DISCONNECTED")
+		local client = findClient()
+		TriggerClientEvent("esx_publictransports:setUpClient", client, state)
+	end
 end)
 
 AddEventHandler("onServerResourceStart", function(resName)
@@ -53,74 +50,82 @@ AddEventHandler("onServerResourceStart", function(resName)
 	end
 
 	-- Find a client to run the code
-	local client = findClient()	
+	local client = findClient()
 
-	for i, route in ipairs(Config.Routes) do
-		local position = route.info.pos
-		local heading = route.info.heading
-		local blipColor = route.info.color
-		local hash = route.info.hash
+	local numOfBus = 0
+	while numOfBus < Config.BusPerRoute do
+		for i, route in ipairs(Config.Routes) do
+			local position = route.info.pos
+			local heading = route.info.heading
+			local blipColor = route.info.color
+			local hash = route.info.hash
 
-		state[i] = {}
+			state[i] = {}
 
-		local vehicle = CreateVehicle(GetHashKey(hash), position, heading, true, true)
-		local ped = CreatePedInsideVehicle(vehicle, 0, GetHashKey("ig_bankman"), -1, true, true)
+			local vehicle = CreateVehicle(GetHashKey(hash), position, heading, true, true)
+			local ped = CreatePedInsideVehicle(vehicle, 0, GetHashKey("ig_bankman"), -1, true, false)
+			Wait(500)
+			while DoesEntityExist(vehicle) == false do 
+				vehicle = CreateVehicle(GetHashKey(hash), position, heading, true, true)
+				Wait(500)
+			end
+			while DoesEntityExist(ped) == false do 
+				ped = CreatePedInsideVehicle(vehicle, 0, GetHashKey("ig_bankman"), -1, true, false)
+				Wait(500)
+			end
+			state[i].pedId = NetworkGetNetworkIdFromEntity(ped)
+			state[i].busId = NetworkGetNetworkIdFromEntity(vehicle)
+			state[i].seats = nil
+			state[i].nextStop = 2	
+			-- Solve the problem of out of scope management of entities
+			SetEntityDistanceCullingRadius(vehicle, 999999999.0)
+			SetEntityDistanceCullingRadius(ped, 999999999.0) -- onesync_distanceCullVehicles true
+			SetPlayerCullingRadius(currentClient, 999999999.0)
+			-- Trigger event to everyone for the blips
+			TriggerClientEvent("esx_publictransports:createBusBlip", -1, state[i].busId, blipColor)
+		end
+		print("Server ready")
+		-- DOESNT ALWAYS WORKS NEED TO FIX IT!! (Fix with WAIT)
 		Wait(1000)
-		-- while DoesEntityExist(ped) == false or DoesEntityExist(vehicle) == false do
-		-- 	print(vehicle .. " - " .. ped)
-		-- 	-- SOME PROBLEMS HERE IF PLAYER OUT OF SCOPE WHEN GET IN SCOPE SPAWNS A LOT OF BUS AND PEDS
-		-- 	if not DoesEntityExist(ped) then
-		-- 		ped = CreatePedInsideVehicle(vehicle, 0, GetHashKey("ig_bankman"), -1, true, true)
-		-- 	end
-		-- 	if not DoesEntityExist(vehicle) then
-		-- 		vehicle = CreateVehicle(GetHashKey(hash), position, heading, true, true)
-		-- 	end
-		-- 	Wait(1000)
-		-- end
-		while DoesEntityExist(vehicle) == false do 
-			vehicle = CreateVehicle(GetHashKey(hash), position, heading, true, true)
-			Wait(500)
+		TriggerClientEvent("esx_publictransports:setUpClient", client, state)
+
+		numOfBus = numOfBus + 1
+		if Config.BusPerRoute > 1 then
+			Wait(Config.TimeBetweenBus*1000)
 		end
-		while DoesEntityExist(ped) == false do 
-			ped = CreatePedInsideVehicle(vehicle, 0, GetHashKey("ig_bankman"), -1, true, true)
-			Wait(500)
-		end
-		state[i].pedId = NetworkGetNetworkIdFromEntity(ped)
-		state[i].busId = NetworkGetNetworkIdFromEntity(vehicle)
-		state[i].seats = nil
-		state[i].firstTime = true
-		state[i].nextStop = 2	
-		-- Solve the problem of out of scope management of entities
-		SetEntityDistanceCullingRadius(vehicle, 999999999.0)
-		SetEntityDistanceCullingRadius(ped, 999999999.0) -- onesync_distanceCullVehicles true
-		-- Trigger event to everyone for the blips
-		TriggerClientEvent("esx_publictransports:createBusBlip", -1, state[i].busId)
-		print(GetEntityCoords(NetworkGetEntityFromNetworkId(state[i].busId)))
 	end
-	print("Server ready")
-	-- DOESNT ALWAYS WORKS NEED TO FIX IT!! (Fix with WAIT. The problem is maybe this event starts too early for triggering a client event?)
-	Wait(1000)
-	TriggerClientEvent("esx_publictransports:setUpClient", client, state)
-	
-	
-	
---[[
+--[[	
 	while true do
 		Wait(5000)
-		print(DoesEntityExist(ped))
-		print(DoesEntityExist(vehicle))
-		print(GetEntityCoords(vehicle))
-		print("owner " .. NetworkGetEntityOwner(vehicle))
+		print(DoesEntityExist(NetworkGetEntityFromNetworkId(state[1].pedId)))
+		print(DoesEntityExist(NetworkGetEntityFromNetworkId(state[1].busId)))
+		print("Speed: " .. GetEntitySpeed(NetworkGetEntityFromNetworkId(state[1].busId)))
+		print("owner " .. NetworkGetEntityOwner(NetworkGetEntityFromNetworkId(state[1].busId)))
+		print("Task state: " .. GetPedScriptTaskCommand(NetworkGetEntityFromNetworkId(state[1].pedId)))
 		print("---")
 	end
-	]]
+]]
 end)
 
 ESX.RegisterServerCallback("esx_publictransports:getBusEntity", function(playerId, cb)
-	while not DoesEntityExist(NetworkGetEntityFromNetworkId(state.busId)) do
-		Wait(500)
+	Ids = {}
+	for _, data in ipairs(state) do
+		while not DoesEntityExist(NetworkGetEntityFromNetworkId(data.busId)) do
+			Wait(500)
+		end
+		table.insert(Ids, data.busId)
 	end
-	cb(state.busId)
+
+	cb(Ids)
+end)
+
+RegisterNetEvent("esx_publictransports:updateNextStop")
+AddEventHandler("esx_publictransports:updateNextStop", function(busId, nextStop)
+	for _, routeState in ipairs(state) do
+		if routeState.busId == busId then
+			routeState.nextStop = nextStop
+		end
+	end
 end)
 
 AddEventHandler('onResourceStop', function(resource)
@@ -134,12 +139,15 @@ AddEventHandler('onResourceStop', function(resource)
 end)
 
 function findClient()
+	currentClient = nil
+	Wait(2000)
 	xPlayers = ESX.GetPlayers()
-
-	while #xPlayers == 0 do
+	print("Number of client connected: " .. #xPlayers)
+	while #xPlayers == 0 do 
+		print("Waiting for players")
 		Wait(60000)
 		xPlayers = ESX.GetPlayers()
 	end
-
+	currentClient = xPlayers[1]
 	return xPlayers[1]
 end
