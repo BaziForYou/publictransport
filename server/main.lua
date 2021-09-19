@@ -7,7 +7,10 @@ currentClient = nil
 TriggerEvent('esx:getSharedObject', function(obj) ESX = obj end)
 
 RegisterCommand("pos", function(source, args)
-    print(GetEntityCoords(GetPlayerPed(source)))
+	local pos = GetEntityCoords(GetPlayerPed(source))
+    --print(pos)
+    local x, y, z = pos.x, pos.y, pos.z
+    print("{ x = ".. x .. ", y = " .. y .. ", z = " .. z ..", h = " .. GetEntityHeading(GetPlayerPed(source)) .." },")
 end)
 
 RegisterCommand("posbegin", function(source, args)
