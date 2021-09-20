@@ -1,3 +1,11 @@
+keys = {
+	44, -- q
+	32, -- w
+	34, -- a
+	8,  -- s
+	9,  -- d
+	22, -- space
+}
 ESX = nil
 vehicleList = {}
 clientState = {}
@@ -42,16 +50,29 @@ TODO:
 -- fix test
 
 Citizen.CreateThread(function()
+	local tasking = false
 	while true do
 		Wait(0)
 		local veh = GetVehiclePedIsTryingToEnter(PlayerPedId())
-		if not IsVehicleSeatFree(veh, GetSeatPedIsTryingToEnter(PlayerPedId())) then
+		if not IsVehicleSeatFree(veh, GetSeatPedIsTryingToEnter(PlayerPedId())) and tasking == false then
 			for i=1, GetVehicleModelNumberOfSeats(GetEntityModel(veh))-1 do
-				if IsVehicleSeatFree(veh, i) then
-					TaskEnterVehicle(PlayerPedId(), veh, 1.0, i, 2.0)
-					break
+				if IsVehicleSeatFree(veh, i) and tasking == false then
+					TaskEnterVehicle(PlayerPedId(), veh, 1.0, i, 2.0, 1, 0)
+					i = GetVehicleModelNumberOfSeats(GetEntityModel(veh))
+					tasking = true
+					--break
 				end
 			end	
+		end
+
+		if tasking then
+			for i=1, #keys do
+				--print("quui")
+				if(IsControlJustPressed(0, keys[i])) then
+					ClearPedTasks(PlayerPedId())
+					tasking = false
+				end
+			end
 		end
 	end
 end)
@@ -68,6 +89,7 @@ RegisterCommand("drop", function()
 	local ped = CreatePedInsideVehicle(vehicle, 0, GetHashKey("ig_bankman"), -1, true, true)
 	SetPedRelationshipGroupHash(ped, "PLAYER")
 ]]
+print(GetEntityRotation(PlayerPedId()))
 end)
 
 -- The client has been choosed
