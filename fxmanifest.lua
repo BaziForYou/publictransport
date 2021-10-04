@@ -7,11 +7,11 @@ author "Scorpion01"
 version "0.1"
 
 client_scripts {
-	'client/*.lua',
+	'client/main.lua',
 	'config.lua'
 }
 
 server_scripts {
-	'server/*.lua',
+	'server/main.lua',
 	'config.lua'
 }

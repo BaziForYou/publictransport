@@ -1,185 +1,153 @@
-keys = {
-	44, -- q
-	32, -- w
-	34, -- a
-	8,  -- s
-	9,  -- d
-	22, -- space
-}
-ESX = nil
-vehicleList = {}
-clientState = {}
+-- for debug
+state = {'Driving to bus stop', 'Parking', 'Waiting'}
 
 Citizen.CreateThread(function()
-	while ESX == nil do
-		TriggerEvent('esx:getSharedObject', function(obj) ESX = obj end)
-		Citizen.Wait(10)
-	end
-
 	for _, route in ipairs(Config.Routes) do
-		for i, pos in ipairs(route) do
-			local blip = AddBlipForCoord(pos)
+		for _, curr in ipairs(route) do
+			if curr.stop == true then  
+				local blip = AddBlipForCoord(curr.pos)
 
-			SetBlipSprite (blip, 513)
-			SetBlipColour (blip, route.info.color)
-			SetBlipScale(blip, 0.5)
-			SetBlipAsShortRange(blip, true)
-		
-			BeginTextCommandSetBlipName('STRING')
-			AddTextComponentSubstringPlayerName("Bus stop")
-			EndTextCommandSetBlipName(blip)
-		end
-	end
-	ESX.TriggerServerCallback("esx_publictransports:playerConnecting", function(busIds)
-		print("RECIVING BUS IDS")
-		for i=1, #busIds do
-			TriggerEvent("esx_publictransports:createBusBlip", busIds[i], 4)
-		end
-	end)
-end)
-
---[[ 
-TODO:
-	DONE
- - Missing all the part about blips for each client that means share the bus entity with serevr to send to everyone the right entity for creating the rght blip
- - Only spawn the bu if player near or in some rare random cases
- - Blips if client connect (WHY??? this resource starts and esx_publictransports:getBusEntity doesnt work?)
- - Entity owner set to -1 when client disconnect. Is this a problem??
-]]
-
--- fix test
-
-Citizen.CreateThread(function()
-	local tasking = false
-	while true do
-		Wait(0)
-		local veh = GetVehiclePedIsTryingToEnter(PlayerPedId())
-		if not IsVehicleSeatFree(veh, GetSeatPedIsTryingToEnter(PlayerPedId())) and tasking == false then
-			for i=1, GetVehicleModelNumberOfSeats(GetEntityModel(veh))-1 do
-				if IsVehicleSeatFree(veh, i) and tasking == false then
-					TaskEnterVehicle(PlayerPedId(), veh, 1.0, i, 2.0, 1, 0)
-					i = GetVehicleModelNumberOfSeats(GetEntityModel(veh))
-					tasking = true
-					--break
-				end
-			end	
-		end
-
-		if tasking then
-			for i=1, #keys do
-				--print("quui")
-				if(IsControlJustPressed(0, keys[i])) then
-					ClearPedTasks(PlayerPedId())
-					tasking = false
-				end
+				SetBlipSprite (blip, 513)
+				SetBlipColour (blip, route.info.color)
+				SetBlipScale(blip, 0.5)
+				SetBlipAsShortRange(blip, true)
+			
+				BeginTextCommandSetBlipName('STRING')
+				AddTextComponentSubstringPlayerName("Bus stop")
+				EndTextCommandSetBlipName(blip)
 			end
 		end
 	end
 end)
 
-
-RegisterCommand("drop", function()
-	--[[local ped = NetworkGetEntityFromNetworkId(state.pedId)
-	ClearPedTasksImmediately(ped)
-	Wait(5000)
-	TriggerEvent("esx_publictransports:setUpClient", state)]]
---[[	RequestModel("Coach")
-	while not HasModelLoaded("Coach") do Wait(1) end
-	local vehicle = CreateVehicle(GetHashKey("Coach"), GetEntityCoords(PlayerPedId()), 0.0, true, true)
-	local ped = CreatePedInsideVehicle(vehicle, 0, GetHashKey("ig_bankman"), -1, true, true)
-	SetPedRelationshipGroupHash(ped, "PLAYER")
-]]
-print(GetEntityRotation(PlayerPedId()))
+RegisterNetEvent("publictransport:setUpClient")
+AddEventHandler("publictransport:setUpClient", function(info)
+	ManageService(info)
 end)
 
--- The client has been choosed
-RegisterNetEvent("esx_publictransports:setUpClient")
-AddEventHandler("esx_publictransports:setUpClient", function(state)
-	print("Client recived orders")
-	ManageService(Config.Routes, state)
+RegisterNetEvent("publictransport:restoreService")
+AddEventHandler("publictransport:restoreService", function(info)
+	ManageService(info)
 end)
 
---[[
-RegisterNetEvent('esx:playerLoaded')
-AddEventHandler('esx:playerLoaded', function(playerData)
-	ESX.TriggerServerCallback("esx_publictransports:getBusEntity", function(vehicles)
-		for i, id in ipairs(vehicles) do
-			TriggerEvent("esx_publictransports:createBusBlip", id, Config.Routes[i].info.color)
+function ManageService(info)
+	while not NetworkDoesEntityExistWithNetworkId(info.pedNetId) do
+		Wait(10)
+	end
+
+	local busDriver = NetToPed(info.pedNetId)
+	local bus = GetVehiclePedIsIn(busDriver, false)
+	while bus == 0 do
+		Wait(10)
+		bus = GetVehiclePedIsIn(busDriver, false)
+	end
+
+	if bus == 0 or not IsVehicleDriveable(bus, false) then
+		print("SOMETHING IS WRONG WITH BUS ", info.routeNumber, info.routeBusNumber)
+	end
+
+	SetEntityAsMissionEntity(busDriver, true, true)
+	SetEntityAsMissionEntity(bus, true, true)
+	SetEntityCanBeDamaged(bus, false)
+	SetVehicleDamageModifier(bus, 0.0)
+	SetVehicleEngineCanDegrade(bus, false)
+
+	SetEntityCanBeDamaged(busDriver, false)
+	SetPedCanBeTargetted(busDriver, false)
+	
+	SetDriverAbility(busDriver, 0.8)
+	SetBlockingOfNonTemporaryEvents(busDriver, true)
+	SetPedConfigFlag(busDriver, 251, true)
+	SetPedConfigFlag(busDriver, 64, true) -- CPED_CONFIG_FLAG_AttachedToVehicle 
+	SetPedStayInVehicleWhenJacked(busDriver, true)
+
+	local path = {}
+	local firstStop = info.nextStop
+	for i=firstStop, #Config.Routes[info.routeNumber], 1 do
+		local curr = Config.Routes[info.routeNumber][i]
+		table.insert(path, {pos = curr.pos, heading = curr.heading, stop = curr.stop})
+	end
+	for i=(firstStop-1), 1, -1 do
+		local curr = Config.Routes[info.routeNumber][i]
+		table.insert(path, {pos = curr.pos, heading = curr.heading, stop = curr.stop})
+	end
+
+	local task = OpenSequenceTask()
+	for i=1, #path do
+		TaskVehicleDriveToCoordLongrange(0, bus, path[i].pos, 50.0, 1076369724, 40.0) -- speed 20.0
+		
+		if path[i].stop == true then
+			TaskVehicleDriveToCoordLongrange(0, bus, path[i].pos, 9.0, 60, 6.0)
+			TaskPause(0, Config.WaitTimeAtBusStop*1000)
+		elseif path[i].stop == false then
+			TaskVehicleDriveToCoordLongrange(0, bus, path[i].pos, 50.0, 1076369724, 15.0)
+			TaskPause(0, 1)
 		end
-	end)
-end)
-]]
-RegisterNetEvent("esx_publictransports:createBusBlip")
-AddEventHandler("esx_publictransports:createBusBlip", function(vehicle, color)
-	local busBlip = AddBlipForEntity(NetworkGetEntityFromNetworkId(vehicle))
+	end
+	SetSequenceToRepeat(task, true)
+	CloseSequenceTask(task)
+	TaskPerformSequence(busDriver, task)
+
+	while GetSequenceProgress(busDriver) == -1 do Wait(0) end
+
+	local oldStatus = -1
+	local nextStop = 1
+	while true do
+		local status = (GetSequenceProgress(busDriver)%3) + 1
+		
+		if oldStatus ~= status then
+			if status == 2 and Config.Routes[info.routeNumber][nextStop].stop == true then -- Vehicle parking
+				Citizen.CreateThread(function()
+					Wait(Config.WaitTimeAtBusStop*1000 * 1.5)
+					local st = (GetSequenceProgress(busDriver)%3) + 1
+					if st == 2 then -- Task stucked
+						SetVehicleOnGroundProperly(bus)
+						--print("GO TO NEXT PROGRESS", "sequence: ", GetSequenceProgress(busDriver))
+						local sequence = GetSequenceProgress(busDriver)
+						ClearPedTasks(busDriver)
+						TaskPerformSequenceFromProgress(busDriver, task, sequence+2, sequence+3)
+					end
+				end)
+			elseif status == 1 then
+				nextStop = (nextStop%#Config.Routes[info.routeNumber]) + 1
+				TriggerServerEvent("publictransport:updateService", info.pedNetId, nextStop)
+			end
+			-- Debug print
+			-- print(state[status])	
+		end
+		oldStatus = status
+		Wait(1000)
+	end
+end
+
+RegisterNetEvent("publictransport:registerBusBlip")
+AddEventHandler("publictransport:registerBusBlip", function(info)
+	--print("Ped exist on blip register", DoesEntityExist(NetworkGetEntityFromNetworkId(info.busNetId)))
+	local busBlip = AddBlipForEntity(NetworkGetEntityFromNetworkId(info.busNetId))
 	SetBlipSprite (1, 463)
-	SetBlipColour (busBlip, color)
+	SetBlipColour (busBlip, info.color)
 	SetBlipScale(busBlip, 0.5)
 	SetBlipAsShortRange(busBlip, true)
 	BeginTextCommandSetBlipName('STRING')
-	AddTextComponentSubstringPlayerName('Bus ' .. color)
+	AddTextComponentSubstringPlayerName("Bus " .. info.color)
 	EndTextCommandSetBlipName(busBlip)
-	--print("Done setting blip for " .. vehicle)
 end)
 
-function ManageService(route, state)
-	clientState = state
-	for i, routeState in ipairs(state) do
-		local vehicle = NetworkGetEntityFromNetworkId(routeState.busId)
-		local ped = NetworkGetEntityFromNetworkId(routeState.pedId)
-		--Maybe its useless need to test online
-		if routeState.seats ~= nil then
-			-- restore player seats
-			print("Need to restore players seats")
-		end
-		--MAYBE USELESS
-		--[[
-		Citizen.CreateThread(function()
-			while true do 
-				if GetVehicleNumberOfPassengers(vehicle) ~= 0 then
-					routeState.seats = {}
-					for i=0, GetVehicleModelNumberOfSeats(Config.BusHash), 1 do
-						if IsPedAPlayer(GetPedInVehicleSeat(vehicle, i)) then
-							table.insert(routeState.seats, {seatId = i, playerId = NetworkGetNetworkIdFromEntity(GetPedInVehicleSeat(vehicle, i))})
-						end
-					end
-				end
-				Wait(4000)
-			end
-		end)
-		]]
-
-		SetPedHearingRange(ped, 0.0)
-		SetPedSeeingRange(ped, 0.0)
-		SetPedAlertness(ped, 0.0)
-		SetPedFleeAttributes(ped, 0, 0)
-		SetBlockingOfNonTemporaryEvents(ped, true)
-		TaskSetBlockingOfNonTemporaryEvents(ped, true)
-		SetEntityCanBeDamaged(ped, false)
-		SetPedCanBeTargetted(ped, false)
-		SetEntityAsMissionEntity(ped, true,true)
-		SetDriverAbility(ped, 1.0)
-		SetPedRelationshipGroupHash(ped, GetHashKey("PLAYER"))
-		SetEntityAsMissionEntity(vehicle, true,true)
-		
-		-- START ROUTE
-		Citizen.CreateThread(function()
-			local isDriving = false
-			while true do
-				Wait(0)
-				if not isDriving then
-					TaskVehicleDriveToCoordLongrange(ped, vehicle, route[i][routeState.nextStop], 16.0, 524603, 5.0) -- 443 -> respect traffic lights; 319\
-					isDriving = true				
-				elseif Vdist(GetEntityCoords(vehicle), route[i][routeState.nextStop]) <= 8.0 then					
-					isDriving = false
-					if routeState.nextStop == #route[i] then routeState.nextStop = 1 else routeState.nextStop = routeState.nextStop + 1 end
-					TriggerServerEvent("esx_publictransports:updateNextStop", routeState.busId, routeState.nextStop)
-					Wait(8000)
-				else
-					Wait(500)
-				end
-			end
-		end)
-		
+RegisterNetEvent("publictransport:updateBusBlips")
+AddEventHandler("publictransport:updateBusBlips", function(blipsInfo)
+	print("Updating " .. #blipsInfo .. " blips")
+	for _, curr in pairs(blipsInfo) do
+		local busBlip = AddBlipForEntity(NetworkGetEntityFromNetworkId(curr.busNetId))
+		SetBlipSprite (1, 463)
+		SetBlipColour (busBlip, curr.color)
+		SetBlipScale(busBlip, 0.5)
+		SetBlipAsShortRange(busBlip, true)
+		BeginTextCommandSetBlipName('STRING')
+		AddTextComponentSubstringPlayerName("Bus " .. curr.color)
+		EndTextCommandSetBlipName(busBlip)
 	end
-end
+end)
+
+-- PED s_m_m_gentransport
+
+-- Add Markers to bus stops, tells you missing time to next bus
