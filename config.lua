@@ -10,7 +10,7 @@ Config.Routes = {
 			timeBetweenBus = 40, -- In second 
 		},
 		{ pos = vector3(234.9626, -829.2527, 29.98755), heading = 68.031, stop = true },
-		--{ pos = vector3(-239.7231, -1146.936, 22.62415), heading = 272.125, stop = false }, -- IF UNCOMMENTED THE GAME WILL CRASH
+		--{ pos = vector3(-239.7231, -1146.936, 22.62415), heading = 272.125, stop = false }, -- IF UNCOMMENTED THE GAME WILL CRASH (not sure anymore)
 		{ pos = vector3(-232.1934, -983.7758, 28.60583), heading = 158.740, stop = true },
 		{ pos = vector3(-68.75604, -1078.668, 26.97144), heading = 340.15, stop = true },
 		{ pos = vector3(176.8747, -1030.365, 29.3136), heading = 0.0, stop = false }, -- stop = false, bus won't stop but will force it to pass this point
