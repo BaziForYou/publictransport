@@ -44,7 +44,9 @@ AddEventHandler("playerJoining", function(oldId)
 	players[src] = true
 
 	-- TODO: find a better solution
-	SetPlayerCullingRadius(src, 999999999.0)
+	if serviceStarted == false then
+		SetPlayerCullingRadius(src, 999999999.0)
+	end
 end)
 
 AddEventHandler('playerDropped', function (reason)
@@ -63,8 +65,9 @@ AddEventHandler('playerDropped', function (reason)
 		-- restore the service of the dropped player
 		local player = GetFirstFreePlayer()
 		if player ~= nil then
+			SetPlayerCullingRadius(player, 999999999.0)
 			for k,v in pairs(busInfo) do
-				TriggerClientEvent("publictransport:restoreService", v)
+				TriggerClientEvent("publictransport:restoreService", player, v)
 			end
 		end
 	end
