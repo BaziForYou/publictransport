@@ -1,6 +1,5 @@
 -- for debug
 state = {'Driving to bus stop', 'Parking', 'Waiting'}
-print("test")
 Citizen.CreateThread(function()
 	for _, route in ipairs(Config.Routes) do
 		for _, curr in ipairs(route) do
