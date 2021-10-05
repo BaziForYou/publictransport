@@ -13,7 +13,7 @@ end)
 Citizen.CreateThread(function()
 	-- TODO: remove --> uncommnet next line and set as your id in the server
 	-- if you want to test by restarting the resource
-	-- players[1] = true
+	players[1] = true
 	while true do
 		if GetPlayerNum() == 0 then
 			-- Waiting for first spawn
