@@ -10,10 +10,25 @@ RegisterCommand("busstop", function(source, args)
 	print("{ pos = " .. GetEntityCoords(ped) .. ", heading = " .. GetEntityHeading(ped) .. ", stop = true },")
 end)
 
+  
+
 Citizen.CreateThread(function()
 	-- TODO: remove --> uncommnet next line and set as your id in the server
 	-- if you want to test by restarting the resource
+<<<<<<< Updated upstream
 	players[1] = true
+=======
+	players[3] = true
+	players[5] = true
+	players[7] = true
+	players[8] = true
+	SetPlayerCullingRadius(3, 999999999.0)
+	SetPlayerCullingRadius(6, 999999999.0)
+	SetPlayerCullingRadius(7, 999999999.0)
+	SetPlayerCullingRadius(8, 999999999.0)
+	--players[{1, 2, 3}] = true
+	print(json.encode(players))
+>>>>>>> Stashed changes
 	while true do
 		if GetPlayerNum() == 0 then
 			-- Waiting for first spawn
@@ -82,15 +97,23 @@ AddEventHandler('onResourceStop', function(resource)
 end)
 
 RegisterNetEvent("publictransport:updateService")
-AddEventHandler("publictransport:updateService", function(pedId, nextStop)
+AddEventHandler("publictransport:updateService", function(pedId, nextStop, timer)
 	local src = source
 	if players[src] == nil then print("ERROR TABLE EMPTY") end
 
+	local currentRouteNumebr
+	local currentBusNumber
+
 	for k,v in pairs(players[src]) do
 		if v.pedId == pedId then
+			currentRouteNumebr = v.routeNumebr
+			currentBusNumber = v.busNumebr
 			v.nextStop = nextStop
 		end
 	end
+
+	-- TODO: Pass an array already ready to be read for the client -> create it all server side
+	TriggerClientEvent("publictransport:updateTimers", -1, currentRouteNumebr, nextStop, timer)
 end)
 
 function CleanUp()
@@ -126,19 +149,20 @@ function StartService()
 				local pedOwner = NetworkGetEntityOwner(ped)
 				
 				if players[pedOwner] == nil then
-					print("ERROR PLAYER NILL")
+					print("ERROR PLAYER NIL")
 				end
 				if players[pedOwner] == true then
 					players[pedOwner] = {}
 				end
 				table.insert(players[pedOwner], {pedNetId = NetworkGetNetworkIdFromEntity(ped), routeNumebr = i, busNumebr = numOfBus, nextStop = -1})
-
+				print(json.encode(players[pedOwner]))
 				-- Solve the problem of out of scope management of entities
 				SetEntityDistanceCullingRadius(vehicle, 999999999.0)
 				SetEntityDistanceCullingRadius(ped, 999999999.0)
 				-- Added to table for cleanUp()
 				table.insert(entitiesList, ped)
 				table.insert(entitiesList, vehicle)
+				print(json.encode(entitiesList))
 
 				local clientInfoPed = {
 					routeNumber = i,
@@ -178,3 +202,6 @@ function GetFirstFreePlayer()
 	end
 	return nil
 end
+
+
+

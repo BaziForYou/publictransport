@@ -1,3 +1,20 @@
+-- TOREMOVE
+Citizen.CreateThread(function()
+	while true do 
+		SetPedDensityMultiplierThisFrame(0.0)
+		SetScenarioPedDensityMultiplierThisFrame(0.0, 0.0)
+
+		-- Traffic Intensity
+		SetRandomVehicleDensityMultiplierThisFrame(0.0)
+		SetParkedVehicleDensityMultiplierThisFrame(0.0)
+		-- Vehicles on streets 0.0 - 1.0
+		SetVehicleDensityMultiplierThisFrame(0.0)
+		Wait(1)
+	end
+end)
+
+local textData = {}
+
 -- for debug
 state = {'Driving to bus stop', 'Parking', 'Waiting'}
 Citizen.CreateThread(function()
@@ -17,6 +34,39 @@ Citizen.CreateThread(function()
 			end
 		end
 	end
+	-- Oh cool
+	RegisterCommand('test', function()
+		local pid = PlayerPedId()
+		local pidpos = GetEntityCoords(pid)
+		local hashstreet = GetStreetNameAtCoord(pidpos.x, pidpos.y, pidpos.z)
+		local stringstreet = GetStreetNameFromHashKey(hashstreet)
+		print(stringstreet)
+	end)
+
+	for i=1, #Config.Routes do
+		textData[i] = {}
+	end
+	
+	-- We can iterate here all the bus stops and check for distances
+	Citizen.CreateThread(function()
+		while true do
+			local player = PlayerPedId()
+			local i = 1
+			local j = 1
+			for _, route in ipairs(Config.Routes) do
+				for _, curr in ipairs(route) do
+					if Vdist2(GetEntityCoords(player), curr.pos) < 25*25 then
+						if curr.stop == true then
+							Create3D(curr.pos, 2.0, "Test") --textData[i][j].timer
+						end
+					end
+					j = j + 1
+				end
+				i = i + 1
+			end
+			Wait(0)
+		end
+	end)
 end)
 
 RegisterNetEvent("publictransport:setUpClient")
@@ -93,7 +143,7 @@ function ManageService(info)
 	local nextStop = 1
 	while true do
 		local status = (GetSequenceProgress(busDriver)%3) + 1
-		
+
 		if oldStatus ~= status then
 			if status == 2 and Config.Routes[info.routeNumber][nextStop].stop == true then -- Vehicle parking
 				Citizen.CreateThread(function()
@@ -108,16 +158,51 @@ function ManageService(info)
 					end
 				end)
 			elseif status == 1 then
+				local distance = 0.0
 				nextStop = (nextStop%#Config.Routes[info.routeNumber]) + 1
-				TriggerServerEvent("publictransport:updateService", info.pedNetId, nextStop)
+
+				
+				if (Config.Routes[info.routeNumber][nextStop].stop == false) then
+					local virtualStop = nextStop
+					distance = 0
+					while Config.Routes[info.routeNumber][virtualStop].stop == false do
+						virtualStop = (virtualStop%#Config.Routes[info.routeNumber]) + 1
+						local prev = virtualStop - 1
+						if prev == 0 then prev = #Config.Routes[info.routeNumber] end
+						
+						local x, y, z = table.unpack(Config.Routes[info.routeNumber][prev].pos)
+						local x1, y1, z1 = table.unpack(Config.Routes[info.routeNumber][virtualStop].pos)
+						distance = distance + CalculateTravelDistanceBetweenPoints(x, y, z, x1, y1, z1)
+						Wait(0)
+					end
+				else
+					local p = nextStop-1
+					if p == 0 then p = #Config.Routes[info.routeNumber] end
+					local x, y, z = table.unpack(Config.Routes[info.routeNumber][p].pos)
+					local x1, y1, z1 = table.unpack(Config.Routes[info.routeNumber][nextStop].pos)
+					distance = CalculateTravelDistanceBetweenPoints(x, y, z, x1, y1, z1)
+				end				
+
+				
+				local timer = distance/50.0*3.6
+				--print("Time to next stop: ", timer)
+				
+				TriggerServerEvent("publictransport:updateService", info.pedNetId, nextStop, timer)
 			end
 			-- Debug print
-			-- print(state[status])	
+			--print(state[status])	
 		end
 		oldStatus = status
 		Wait(1000)
 	end
 end
+
+RegisterNetEvent("publictransport:updateTimers")
+AddEventHandler("publictransport:updateTimers", function(currentRouteNumebr, nextBusStop, timer)
+	-- textData[currentRouteNumebr] = {}
+	-- textData[currentRouteNumebr][nextBusStop] = timer
+	print(timer)
+end)
 
 RegisterNetEvent("publictransport:registerBusBlip")
 AddEventHandler("publictransport:registerBusBlip", function(info)
@@ -150,3 +235,30 @@ end)
 -- PED s_m_m_gentransport
 
 -- Add Markers to bus stops, tells you missing time to next bus
+
+-- What if i want to have the scale as a param
+Create3D = function(coords, multi, texto)
+    local x, y, z = table.unpack(coords)
+    local onScreen,_x,_y=World3dToScreen2d(x,y,z)
+    local px,py,pz=table.unpack(GetGameplayCamCoords())
+    local dist = GetDistanceBetweenCoords(px,py,pz, x,y,z, 1)
+
+    local scale = (1/dist)*2
+    local fov = (1/GetGameplayCamFov())*100
+    local scale = scale*fov
+	local multip = multi
+    if onScreen then
+        SetTextScale(0.0*multip, 0.25*multip)
+        SetTextFont(0)
+        SetTextProportional(1)
+        SetTextColour(255, 255, 255, 255)
+        SetTextDropshadow(0, 0, 0, 0, 255)
+        SetTextEdge(2, 0, 0, 0, 150)
+        SetTextDropShadow()
+        SetTextOutline()
+        SetTextEntry("STRING")
+        SetTextCentre(5)
+        AddTextComponentString(texto)
+        DrawText(_x,_y)
+    end
+end

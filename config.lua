@@ -6,8 +6,13 @@ Config.Routes = {
 		info = { 
 			color = 84, 
 			hash = "bus",
+<<<<<<< Updated upstream
 			busNum = 4, -- busNum >= 1
 			timeBetweenBus = 8, -- In second 
+=======
+			busNum = 1, -- busNum >= 1
+			timeBetweenBus = 40, -- In second 
+>>>>>>> Stashed changes
 		},
 		{ pos = vector3(234.9626, -829.2527, 29.98755), heading = 68.031, stop = true },
 		--{ pos = vector3(-239.7231, -1146.936, 22.62415), heading = 272.125, stop = false }, -- IF UNCOMMENTED THE GAME WILL CRASH (maybe not)
