@@ -1,5 +1,6 @@
 players = {}
 entities = {}
+blips = {}
 
 Citizen.CreateThread(function()
 	while GetPlayerNum() == 0 do
@@ -55,6 +56,8 @@ Citizen.CreateThread(function()
 				
 				table.insert(players[pedOwner], {pedNetId = pedNetId, routeNumber = route, busNumber = busNum, nextStop = 2})
 
+				table.insert(blips, {busNetId = busNetId, color = blipColor})
+
 				TriggerClientEvent("publictransport:startBus", pedOwner, pedNetId, route)
 				TriggerClientEvent("publictransport:registerBusBlip", -1, busNetId, blipColor)
 
@@ -83,11 +86,6 @@ AddEventHandler("publictransport:updateService", function(pedId, nextStop)
 			break
 		end
 	end
-	if nextStop-1 == 0 then
-		nextStop = #Config.Routes[currentRouteNumebr].busStops
-	else
-		nextStop = nextStop - 1
-	end
 end)
 
 RegisterNetEvent("publictransport:onPlayerSpawn")
@@ -95,6 +93,9 @@ AddEventHandler("publictransport:onPlayerSpawn", function()
 	local src = source
 	if players[src] == nil then
 		players[src] = {}
+		if #entities > 0 then
+			TriggerClientEvent("publictransport:registerBlips", src, blips)
+		end
 	end
 end)
 

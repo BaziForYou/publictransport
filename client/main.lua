@@ -84,7 +84,7 @@ AddEventHandler("publictransport:startBus", function(pedNetId, route)
 				nextStop = (nextStop%#Config.Routes[route].busStops) + 1
 				TriggerServerEvent("publictransport:updateService", pedNetId, nextStop)
 			end
-			-- Debug print
+			-- Debug stuff
 			-- print(state[status])	
 		end
 		oldStatus = status
@@ -111,25 +111,18 @@ AddEventHandler("publictransport:registerBusBlip", function(busNetId, color)
 	EndTextCommandSetBlipName(busBlip)
 end)
 
-function Create3D(coords, scale, text)
-	local x, y, z = table.unpack(coords)
-	local onScreen,_x,_y=World3dToScreen2d(x,y,z)
-	local px,py,pz=table.unpack(GetGameplayCamCoords())
-	local dist = GetDistanceBetweenCoords(px,py,pz, x,y,z, 1)
-
-	local fov = (1/GetGameplayCamFov())*100
-	if onScreen then
-		SetTextScale(0.0*scale, 0.25*scale)
-		SetTextFont(0)
-		SetTextProportional(1)
-		SetTextColour(255, 255, 255, 255)
-		SetTextDropshadow(0, 0, 0, 0, 255)
-		SetTextEdge(2, 0, 0, 0, 150)
-		SetTextDropShadow()
-		SetTextOutline()
-		SetTextEntry("STRING")
-		SetTextCentre(5)
-		AddTextComponentString(text)
-		DrawText(_x,_y)
+RegisterNetEvent("publictransport:registerBlips")
+AddEventHandler("publictransport:registerBlips", function(blips)
+	for i, blip in ipairs(blips) do
+		while not NetworkDoesNetworkIdExist(blip.busNetId) do Wait(0) end
+		local bus = NetworkGetEntityFromNetworkId(blip.busNetId)
+		local busBlip = AddBlipForEntity(bus)
+		SetBlipSprite (1, 463)
+		SetBlipColour (busBlip, blip.color)
+		SetBlipScale(busBlip, 0.5)
+		SetBlipAsShortRange(busBlip, true)
+		BeginTextCommandSetBlipName('STRING')
+		AddTextComponentSubstringPlayerName("Bus " .. blip.color)
+		EndTextCommandSetBlipName(busBlip)
 	end
-end
+end)
