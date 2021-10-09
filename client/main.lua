@@ -37,7 +37,8 @@ AddEventHandler("publictransport:startBus", function(pedNetId, route)
 	SetVehicleEngineCanDegrade(bus, false)
 	SetEntityCanBeDamaged(busDriver, false)
 	SetPedCanBeTargetted(busDriver, false)
-	SetDriverAbility(busDriver, 0.8)
+	SetDriverAbility(busDriver, 1.0)
+	SetDriverAggressiveness(busDriver, 0.0)
 	SetBlockingOfNonTemporaryEvents(busDriver, true)
 	SetPedConfigFlag(busDriver, 251, true)
 	SetPedConfigFlag(busDriver, 64, true)
@@ -46,13 +47,13 @@ AddEventHandler("publictransport:startBus", function(pedNetId, route)
 	
 	local task = OpenSequenceTask()
 	for k, v in pairs(Config.Routes[route].busStops) do
-		TaskVehicleDriveToCoordLongrange(0, bus, v.pos, 50.0, 1076369724, 40.0) -- speed 20.0
+		TaskVehicleDriveToCoordLongrange(0, bus, v.pos, 50.0, Config.DriveStyle, 40.0) -- speed 20.0
 		
 		if v.stop == true then
 			TaskVehicleDriveToCoordLongrange(0, bus, v.pos, 9.0, 60, 6.0)
 			TaskPause(0, Config.WaitTimeAtBusStop*1000)
 		elseif v.stop == false then
-			TaskVehicleDriveToCoordLongrange(0, bus, v.pos, 50.0, 1076369724, 15.0)
+			TaskVehicleDriveToCoordLongrange(0, bus, v.pos, 50.0, Config.DriveStyle, 15.0)
 			TaskPause(0, 1)
 		end
 	end
