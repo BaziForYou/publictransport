@@ -1,10 +1,6 @@
 fx_version 'cerulean'
 game 'gta5'
 
-name "publictransport"
-description "Public transport AI"
-author "Scorpion01"
-version "0.1"
 
 client_scripts {
 	'client/main.lua',
