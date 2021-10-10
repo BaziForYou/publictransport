@@ -22,6 +22,15 @@ Citizen.CreateThread(function()
 	end
 end)
 
+RegisterCommand("test2", function()
+	local x, y, z = table.unpack(GetEntityCoords(PlayerPedId()))
+
+	local ret, pos, heading, unk = GetNthClosestVehicleNodeWithHeading(x, y, z, 1, 9, 3.0, 2.5)
+	print(ret, pos, heading, unk)
+	--print(GetEntityHeading(PlayerPedId()))
+	--SetPedDesiredHeading(PlayerPedId(), heading)
+end)
+
 RegisterNetEvent("publictransport:startBus")
 AddEventHandler("publictransport:startBus", function(pedNetId, route)
 	while not NetworkDoesNetworkIdExist(pedNetId) do
@@ -29,6 +38,11 @@ AddEventHandler("publictransport:startBus", function(pedNetId, route)
 	end
 	local busDriver = NetToPed(pedNetId)
 	local bus = GetVehiclePedIsIn(busDriver, false)
+
+	while bus == 0 do 
+		bus = GetVehiclePedIsIn(busDriver, false)		
+		Wait(0)
+	end
 
 	SetEntityAsMissionEntity(busDriver, true, true)
 	SetEntityAsMissionEntity(bus, true, true)
@@ -44,55 +58,38 @@ AddEventHandler("publictransport:startBus", function(pedNetId, route)
 	SetPedConfigFlag(busDriver, 64, true)
 	SetPedStayInVehicleWhenJacked(busDriver, true)
 	SetPedCanBeDraggedOut(busDriver, false)
-	
-	local task = OpenSequenceTask()
-	for k, v in pairs(Config.Routes[route].busStops) do
-		TaskVehicleDriveToCoordLongrange(0, bus, v.pos, 50.0, Config.DriveStyle, 40.0) -- speed 20.0
-		
-		if v.stop == true then
-			TaskVehicleDriveToCoordLongrange(0, bus, v.pos, 9.0, 60, 6.0)
-			TaskPause(0, Config.WaitTimeAtBusStop*1000)
-		elseif v.stop == false then
-			TaskVehicleDriveToCoordLongrange(0, bus, v.pos, 50.0, Config.DriveStyle, 15.0)
-			TaskPause(0, 1)
-		end
-	end
-	SetSequenceToRepeat(task, true)
-	CloseSequenceTask(task)
-	TaskPerformSequence(busDriver, task)
 
-	while GetSequenceProgress(busDriver) == -1 do Wait(0) end
-	
-	local oldStatus = -1
-	local nextStop = 1
+	local busStop = 2
 	while true do
-		local status = (GetSequenceProgress(busDriver)%3) + 1
-
-		if oldStatus ~= status then
-			if status == 2 and Config.Routes[route].busStops[nextStop].stop == true then -- Vehicle parking
-				Citizen.CreateThread(function()
-					
-					Wait(Config.WaitTimeAtBusStop*1000 * 1.5)
-					local st = (GetSequenceProgress(busDriver)%3) + 1
-					if st == 2 then -- Task stucked
-						SetVehicleOnGroundProperly(bus)
-						local sequence = GetSequenceProgress(busDriver)
-						ClearPedTasks(busDriver)
-						TaskPerformSequenceFromProgress(busDriver, task, sequence+2, sequence+3)
-					end
-				end)
-			elseif status == 1 then
-				nextStop = (nextStop%#Config.Routes[route].busStops) + 1
-				TriggerServerEvent("publictransport:updateService", pedNetId, nextStop)
+		local data = Config.Routes[route].busStops[busStop]
+		TaskVehicleDriveToCoordLongrange(busDriver, bus, data.pos, 40.0, Config.DriveStyle, 30.0)		
+		WaitTaskToEnd(busDriver, 567490903)
+		if GetScriptTaskStatus(busDriver, 567490903) == 7 then -- Parking
+			if data.stop == true then
+				TaskVehicleDriveToCoordLongrange(busDriver, bus, data.pos, 9.0, 1076369727, 6.0) 
+				WaitTaskToEnd(busDriver, 567490903)
+				if GetScriptTaskStatus(busDriver, 567490903) == 7 then --Waiting
+					Wait(Config.WaitTimeAtBusStop*1000)
+				end
 			end
-			-- Debug stuff
-			-- print(state[status])	
+			if (busStop+1) > #Config.Routes[route].busStops then
+				busStop = 1
+			else
+				busStop = busStop + 1
+			end
 		end
-		oldStatus = status
 		Wait(1000)
-	end
-	
+	end	
 end)
+
+function WaitTaskToEnd(ped, task)
+	while GetScriptTaskStatus(ped, task) == 0 do
+		Wait(250)
+	end
+	while GetScriptTaskStatus(ped, task) == 1 do
+		Wait(250)
+	end
+end
 
 AddEventHandler("playerSpawned", function(spawnInfo)
 	TriggerServerEvent("publictransport:onPlayerSpawn")

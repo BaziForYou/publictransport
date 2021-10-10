@@ -2,6 +2,15 @@ players = {}
 entities = {}
 blips = {}
 
+RegisterCommand("busstop", function(source, args)
+	local ped = GetPlayerPed(source)
+	print("{ pos = " .. GetEntityCoords(ped) .. ", stop = true },")
+end)
+RegisterCommand("heading", function(source, args)
+	local ped = GetPlayerPed(source)
+	print(GetEntityHeading(ped))
+end)
+
 Citizen.CreateThread(function()
 	while GetPlayerNum() == 0 do
 		Wait(10)
