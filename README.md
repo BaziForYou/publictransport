@@ -1,5 +1,6 @@
 # publictransport
-Resource for Fivem. Makes public transport aviable
+Resource for Fivem. It makes public transport available driven by AI
 
 # NO ESX NEEDED
-This resource is standalone, it just needs the default resource of the server
+This resource does not require any framework.
+It only needs *spawnmanager* resource.
