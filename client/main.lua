@@ -1,5 +1,6 @@
 timeBetweenStops = {}
 busesStatus = {}
+firstSpawn = true
 
 state = {'Driving to bus stop', 'Parking', 'Waiting'}
 
@@ -92,7 +93,10 @@ function WaitTaskToEnd(ped, task)
 end
 
 AddEventHandler("playerSpawned", function(spawnInfo)
-	TriggerServerEvent("publictransport:onPlayerSpawn")
+	if firstSpawn then
+		TriggerServerEvent("publictransport:onPlayerSpawn")
+		firstSpawn = false
+	end
 end)
 
 RegisterNetEvent("publictransport:registerBusBlip")

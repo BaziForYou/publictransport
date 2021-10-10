@@ -13,7 +13,7 @@ end)
 
 Citizen.CreateThread(function()
 	while GetPlayerNum() == 0 do
-		Wait(10)
+		Wait(10000)
 	end
 
 	for route = 1, #Config.Routes do
