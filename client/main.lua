@@ -23,15 +23,6 @@ Citizen.CreateThread(function()
 	end
 end)
 
-RegisterCommand("test2", function()
-	local x, y, z = table.unpack(GetEntityCoords(PlayerPedId()))
-
-	local ret, pos, heading, unk = GetNthClosestVehicleNodeWithHeading(x, y, z, 1, 9, 3.0, 2.5)
-	print(ret, pos, heading, unk)
-	--print(GetEntityHeading(PlayerPedId()))
-	--SetPedDesiredHeading(PlayerPedId(), heading)
-end)
-
 RegisterNetEvent("publictransport:startBus")
 AddEventHandler("publictransport:startBus", function(pedNetId, route)
 	while not NetworkDoesNetworkIdExist(pedNetId) do
