@@ -107,7 +107,7 @@ RegisterNetEvent("publictransport:onPlayerSpawn")
 AddEventHandler("publictransport:onPlayerSpawn", function()
 	local src = source
 	while not IsEntityVisible(GetPlayerPed(src)) do Wait(1) end
-	print("Player " .. src .. " is visible")
+
 	if players[src] == nil then
 		players[src] = {}
 		if #entities > 0 then
