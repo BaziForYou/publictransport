@@ -58,7 +58,6 @@ AddEventHandler("publictransport:startBus", function(pedNetId, route)
 		WaitTaskToEnd(busDriver, 567490903)
 		if GetScriptTaskStatus(busDriver, 567490903) == 7 then -- Parking
 			if data.stop == true then
-				--TaskVehicleDriveToCoord(busDriver, bus, data.pos, 7.0, 1.0, GetHashKey(Config.Routes[route].info.hash),1076369727, 2.5, true) 
 				TaskVehicleDriveToCoordLongrange(busDriver, bus, data.pos, 8.0, Config.DriveStyle, 6.0)
 				WaitTaskToEnd(busDriver, 567490903)
 				if GetScriptTaskStatus(busDriver, 567490903) == 7 then --Waiting
@@ -76,10 +75,10 @@ AddEventHandler("publictransport:startBus", function(pedNetId, route)
 end)
 
 function WaitTaskToEnd(ped, task)
-	while GetScriptTaskStatus(ped, task) == 0 do
+	while GetScriptTaskStatus(ped, task) == 0 do -- ?
 		Wait(250)
 	end
-	while GetScriptTaskStatus(ped, task) == 1 do
+	while GetScriptTaskStatus(ped, task) == 1 do -- Performing the task
 		Wait(250)
 	end
 end
