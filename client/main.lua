@@ -54,11 +54,12 @@ AddEventHandler("publictransport:startBus", function(pedNetId, route)
 	local busStop = 2
 	while true do
 		local data = Config.Routes[route].busStops[busStop]
-		TaskVehicleDriveToCoordLongrange(busDriver, bus, data.pos, 40.0, Config.DriveStyle, 30.0)		
+		TaskVehicleDriveToCoordLongrange(busDriver, bus, data.pos, 40.0, Config.DriveStyle, 25.0)		
 		WaitTaskToEnd(busDriver, 567490903)
 		if GetScriptTaskStatus(busDriver, 567490903) == 7 then -- Parking
 			if data.stop == true then
-				TaskVehicleDriveToCoordLongrange(busDriver, bus, data.pos, 9.0, 1076369727, 6.0) 
+				--TaskVehicleDriveToCoord(busDriver, bus, data.pos, 7.0, 1.0, GetHashKey(Config.Routes[route].info.hash),1076369727, 2.5, true) 
+				TaskVehicleDriveToCoordLongrange(busDriver, bus, data.pos, 8.0, Config.DriveStyle, 6.0)
 				WaitTaskToEnd(busDriver, 567490903)
 				if GetScriptTaskStatus(busDriver, 567490903) == 7 then --Waiting
 					Wait(Config.WaitTimeAtBusStop*1000)
@@ -70,7 +71,7 @@ AddEventHandler("publictransport:startBus", function(pedNetId, route)
 				busStop = busStop + 1
 			end
 		end
-		Wait(1000)
+		Wait(0)
 	end	
 end)
 
